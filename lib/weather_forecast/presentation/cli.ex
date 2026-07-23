@@ -7,6 +7,7 @@ defmodule WeatherForecast.Presentation.CLI do
   human-readable failure reasons.
   """
 
+  alias WeatherForecast.Application.Factories.CityResult
   alias WeatherForecast.Application.UseCases.CalculateAverageMaxTemperatures
   alias WeatherForecast.Domain.City
 
@@ -16,13 +17,20 @@ defmodule WeatherForecast.Presentation.CLI do
     |> Enum.each(&IO.puts(format_line(&1)))
   end
 
-  @spec format_line({City.t(), {:ok, float()} | {:error, term()}}) :: String.t()
+  @spec format_line(CityResult.t()) :: String.t()
   def format_line({%City{name: name}, {:ok, average}}) do
-    "#{name}: #{:erlang.float_to_binary(average, decimals: 1)}°C"
+    "#{name}: #{format_temperature(average)}°C"
   end
 
   def format_line({%City{name: name}, {:error, reason}}) do
     "#{name}: unavailable (#{format_reason(reason)})"
+  end
+
+  defp format_temperature(average) do
+    case :erlang.float_to_binary(average, decimals: 1) do
+      "-0.0" -> "0.0"
+      formatted -> formatted
+    end
   end
 
   defp format_reason({:api_error, message}), do: message

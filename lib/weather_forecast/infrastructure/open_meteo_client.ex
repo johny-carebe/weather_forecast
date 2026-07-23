@@ -42,10 +42,10 @@ defmodule WeatherForecast.Infrastructure.OpenMeteoClient do
     |> handle_response()
   end
 
-  defp handle_response({:ok, %Req.Response{status: 200, body: body}}), do: parse_body(body)
-
   defp handle_response({:ok, %Req.Response{body: %{"error" => true, "reason" => reason}}}),
     do: {:error, {:api_error, reason}}
+
+  defp handle_response({:ok, %Req.Response{status: 200, body: body}}), do: parse_body(body)
 
   defp handle_response({:ok, %Req.Response{status: status}}),
     do: {:error, {:http_status, status}}

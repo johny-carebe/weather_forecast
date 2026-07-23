@@ -47,6 +47,14 @@ defmodule WeatherForecast.Infrastructure.OpenMeteoClientTest do
                OpenMeteoClient.fetch_daily_max(@city)
     end
 
+    test "prefers the API's error reason even on a 200 response" do
+      Req.Test.stub(OpenMeteoClient, fn conn ->
+        Req.Test.json(conn, %{"error" => true, "reason" => "Out of quota"})
+      end)
+
+      assert {:error, {:api_error, "Out of quota"}} = OpenMeteoClient.fetch_daily_max(@city)
+    end
+
     test "reports the status of a non-JSON HTTP failure" do
       Req.Test.stub(OpenMeteoClient, fn conn ->
         Plug.Conn.send_resp(conn, 500, "internal error")

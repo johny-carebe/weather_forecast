@@ -55,6 +55,11 @@ defmodule WeatherForecast.Presentation.CLITest do
       assert CLI.format_line({@sao_paulo, {:ok, 27.799999999999997}}) == "São Paulo: 27.8°C"
     end
 
+    test "never renders a negative zero" do
+      assert CLI.format_line({@sao_paulo, {:ok, -0.04}}) == "São Paulo: 0.0°C"
+      assert CLI.format_line({@sao_paulo, {:ok, -0.06}}) == "São Paulo: -0.1°C"
+    end
+
     test "renders each error reason as a readable message" do
       assert CLI.format_line({@sao_paulo, {:error, :timeout}}) ==
                "São Paulo: unavailable (timeout)"
@@ -67,6 +72,9 @@ defmodule WeatherForecast.Presentation.CLITest do
 
       assert CLI.format_line({@sao_paulo, {:error, {:request_failed, "connection refused"}}}) ==
                "São Paulo: unavailable (connection refused)"
+
+      assert CLI.format_line({@sao_paulo, {:error, :unexpected_reason}}) ==
+               "São Paulo: unavailable (:unexpected_reason)"
     end
   end
 end
