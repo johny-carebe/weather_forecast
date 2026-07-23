@@ -3,41 +3,34 @@ defmodule WeatherForecast.Infrastructure.OpenMeteoClient do
   Client for the Open-Meteo forecast API (https://open-meteo.com/).
 
   The only module that knows the API shape. Every failure mode is
-  normalized into a tagged error tuple; test config injects a
-  `Req.Test` plug (and disables retries) through the
-  `:open_meteo_req_options` app env.
+  normalized into a tagged error tuple. Endpoint constants come from
+  `WeatherForecast.Config`; the test env additionally injects a
+  `Req.Test` plug (and disables retries) through the same config.
   """
 
   alias WeatherForecast.Application.Ports.ForecastProvider
+  alias WeatherForecast.Config
   alias WeatherForecast.Domain.City
 
   @behaviour ForecastProvider
-
-  @base_url "https://api.open-meteo.com"
-  @timezone "America/Sao_Paulo"
-  @forecast_days 6
 
   @impl ForecastProvider
   @spec fetch_daily_max(City.t()) :: {:ok, [number(), ...]} | {:error, term()}
   def fetch_daily_max(%City{} = city) do
     [
-      base_url: @base_url,
+      base_url: Config.open_meteo_base_url(),
       url: "/v1/forecast",
       params: [
         latitude: city.latitude,
         longitude: city.longitude,
         daily: "temperature_2m_max",
-        timezone: @timezone,
-        forecast_days: @forecast_days
+        timezone: Config.open_meteo_timezone(),
+        forecast_days: Config.forecast_days()
       ]
     ]
-    |> Keyword.merge(configured_req_options())
+    |> Keyword.merge(Config.open_meteo_req_options())
     |> Req.request()
     |> handle_response()
-  end
-
-  defp configured_req_options do
-    Application.get_env(:weather_forecast, :open_meteo_req_options, [])
   end
 
   defp handle_response({:ok, %Req.Response{status: 200, body: body}}), do: parse_body(body)
