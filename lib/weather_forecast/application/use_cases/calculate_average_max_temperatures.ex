@@ -29,15 +29,17 @@ defmodule WeatherForecast.Application.UseCases.CalculateAverageMaxTemperatures d
         ordered: true
       )
 
+    forecast_days = Config.forecast_days()
+
     cities
     |> Enum.zip(stream_results)
-    |> Enum.map(&build_city_result/1)
+    |> Enum.map(&build_city_result(&1, forecast_days))
   end
 
   defp fetch_daily_max(%City{} = city), do: Config.forecast_provider().fetch_daily_max(city)
 
-  defp build_city_result({city, stream_result}) do
-    CityResult.build(city, unwrap(stream_result))
+  defp build_city_result({city, stream_result}, forecast_days) do
+    CityResult.build(city, unwrap(stream_result), forecast_days)
   end
 
   defp unwrap({:ok, provider_result}), do: provider_result
