@@ -34,8 +34,10 @@ mix weather
           CalculateAverageMaxTemperatures        concurrent fan-out (Task.async_stream)
             ├─ Application.Ports.ForecastProvider    behaviour (the port)
             │    ◄─ Infrastructure.OpenMeteoClient   Req adapter
+            ├─ Application.Factories.Cities          builds the covered cities
+            ├─ Application.Factories.CityResult      builds each report entry
             └─ Domain.Forecast                       pure math (average)
-                 Domain.City                         static city data
+                 Domain.City                         entity (struct + type)
 ```
 
 - The three API calls run concurrently via `Task.async_stream` — bounded
@@ -44,7 +46,13 @@ mix weather
   without affecting the other cities.
 - Hexagonal-lite layering: the use case depends on the `ForecastProvider`
   behaviour (port), never on HTTP details; the Open-Meteo adapter implements
-  it and is swapped via config.
+  it and is swapped via config. Application factories (`Cities`, `CityResult`)
+  mediate all domain access, keeping the use case thin.
+- Environment constants (`FORECAST_DAYS`, `OPEN_METEO_BASE_URL`,
+  `OPEN_METEO_TIMEZONE`) are declared in the committed `.env`/`.env.test`
+  files (they are not secrets), loaded at boot by `config/runtime.exs` via
+  [dotenvy](https://hexdocs.pm/dotenvy), and read only through
+  `WeatherForecast.Config`.
 - [Req](https://hexdocs.pm/req) is the HTTP client; its built-in transient
   retries stay enabled for real runs and are disabled in tests.
 - No custom supervision tree: this is a run-once CLI and the `:req`
