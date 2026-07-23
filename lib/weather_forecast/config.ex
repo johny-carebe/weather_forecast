@@ -2,10 +2,11 @@ defmodule WeatherForecast.Config do
   @moduledoc """
   Single read point for application configuration.
 
-  Environment constants are declared in `.env`/`.env.test` and loaded
-  into the app env by `config/runtime.exs`; compile-time wiring (the
-  active `ForecastProvider` adapter, test-only Req options) lives in
-  `config/*.exs`. No other module touches the app env directly.
+  Non-secret defaults live in `config/config.exs`; `config/runtime.exs`
+  applies environment-variable overrides at boot (currently the
+  Open-Meteo base URL). The active `ForecastProvider` adapter and the
+  test-only Req options are wired in `config/*.exs`. No other module
+  touches the app env directly.
   """
 
   @app :weather_forecast

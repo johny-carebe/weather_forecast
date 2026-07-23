@@ -4,7 +4,7 @@ defmodule WeatherForecast.MixProject do
   def project do
     [
       app: :weather_forecast,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.20",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -20,7 +20,6 @@ defmodule WeatherForecast.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
-      {:dotenvy, "~> 1.1"},
       {:plug, "~> 1.0", only: :test},
       {:mox, "~> 1.2", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
