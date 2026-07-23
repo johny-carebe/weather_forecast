@@ -14,6 +14,14 @@ defmodule WeatherForecast.Infrastructure.OpenMeteoClient do
 
   @behaviour ForecastProvider
 
+  # Worst case ≈ 2 attempts × (5s connect + 5s receive) + 1s backoff = 21s,
+  # inside the use case's 30s per-city deadline.
+  @transport_options [
+    connect_options: [timeout: 5_000],
+    receive_timeout: 5_000,
+    max_retries: 1
+  ]
+
   @impl ForecastProvider
   @spec fetch_daily_max(City.t()) :: {:ok, [number(), ...]} | {:error, term()}
   def fetch_daily_max(%City{} = city) do
@@ -28,6 +36,7 @@ defmodule WeatherForecast.Infrastructure.OpenMeteoClient do
         forecast_days: Config.forecast_days()
       ]
     ]
+    |> Keyword.merge(@transport_options)
     |> Keyword.merge(Config.open_meteo_req_options())
     |> Req.request()
     |> handle_response()
