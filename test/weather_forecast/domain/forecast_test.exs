@@ -17,7 +17,9 @@ defmodule WeatherForecast.Domain.ForecastTest do
     end
 
     test "rejects an empty list" do
-      assert_raise FunctionClauseError, fn -> Forecast.average_max([], 6) end
+      empty_temps = Enum.take([1.0], 0)
+
+      assert_raise FunctionClauseError, fn -> Forecast.average_max(empty_temps, 6) end
     end
   end
 end
