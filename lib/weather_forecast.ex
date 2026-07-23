@@ -4,9 +4,10 @@ defmodule WeatherForecast do
   Brazilian cities, backed by the Open-Meteo API.
   """
 
+  alias WeatherForecast.Application.Factories.CityResult
   alias WeatherForecast.Application.UseCases.CalculateAverageMaxTemperatures
 
   @doc "Runs the report for the default cities."
-  @spec run() :: [CalculateAverageMaxTemperatures.city_result()]
+  @spec run() :: [CityResult.t()]
   def run, do: CalculateAverageMaxTemperatures.call()
 end

@@ -3,6 +3,7 @@ defmodule WeatherForecast.Application.UseCases.CalculateAverageMaxTemperaturesTe
 
   import Mox
 
+  alias WeatherForecast.Application.Factories.Cities
   alias WeatherForecast.Application.UseCases.CalculateAverageMaxTemperatures
   alias WeatherForecast.Domain.City
   alias WeatherForecast.ForecastProviderMock
@@ -55,7 +56,7 @@ defmodule WeatherForecast.Application.UseCases.CalculateAverageMaxTemperaturesTe
                {%City{name: "São Paulo"}, {:ok, 10.0}},
                {%City{name: "Belo Horizonte"}, {:ok, 10.0}},
                {%City{name: "Curitiba"}, {:error, :timeout}}
-             ] = CalculateAverageMaxTemperatures.call(City.defaults(), 100)
+             ] = CalculateAverageMaxTemperatures.call(Cities.defaults(), 100)
     end
 
     test "returns an empty report for an empty city list" do
