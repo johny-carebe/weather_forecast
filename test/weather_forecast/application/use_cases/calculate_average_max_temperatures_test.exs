@@ -27,6 +27,74 @@ defmodule WeatherForecast.Application.UseCases.CalculateAverageMaxTemperaturesTe
              ] = CalculateAverageMaxTemperatures.call()
     end
 
+    test "runs every city's fetch concurrently" do
+      test_pid = self()
+
+      expect(ForecastProviderMock, :fetch_daily_max, 3, fn _city ->
+        send(test_pid, {:checked_in, self()})
+
+        receive do
+          :proceed -> {:ok, [10.0]}
+        end
+      end)
+
+      report = Task.async(fn -> CalculateAverageMaxTemperatures.call() end)
+
+      city_tasks =
+        for _check_in <- 1..3 do
+          assert_receive {:checked_in, city_task}, 1_000
+
+          city_task
+        end
+
+      Enum.each(city_tasks, &send(&1, :proceed))
+
+      assert [
+               {_sao_paulo, {:ok, 10.0}},
+               {_belo_horizonte, {:ok, 10.0}},
+               {_curitiba, {:ok, 10.0}}
+             ] = Task.await(report)
+    end
+
+    test "zips results back to their cities even when completion order inverts" do
+      test_pid = self()
+
+      expect(ForecastProviderMock, :fetch_daily_max, 3, fn city ->
+        case city.name do
+          "São Paulo" ->
+            send(test_pid, {:blocked, self()})
+
+            receive do
+              :release -> {:ok, [30.0]}
+            end
+
+          "Belo Horizonte" ->
+            send(test_pid, {:finished, "Belo Horizonte"})
+
+            {:ok, [20.0]}
+
+          "Curitiba" ->
+            send(test_pid, {:finished, "Curitiba"})
+
+            {:ok, [10.0]}
+        end
+      end)
+
+      report = Task.async(fn -> CalculateAverageMaxTemperatures.call() end)
+
+      assert_receive {:blocked, sao_paulo_task}, 1_000
+      assert_receive {:finished, "Belo Horizonte"}, 1_000
+      assert_receive {:finished, "Curitiba"}, 1_000
+
+      send(sao_paulo_task, :release)
+
+      assert [
+               {%City{name: "São Paulo"}, {:ok, 30.0}},
+               {%City{name: "Belo Horizonte"}, {:ok, 20.0}},
+               {%City{name: "Curitiba"}, {:ok, 10.0}}
+             ] = Task.await(report)
+    end
+
     test "isolates one city's failure from the others" do
       expect(ForecastProviderMock, :fetch_daily_max, 3, fn city ->
         case city.name do
@@ -45,7 +113,7 @@ defmodule WeatherForecast.Application.UseCases.CalculateAverageMaxTemperaturesTe
     test "converts an exceeded deadline into a per-city timeout error" do
       expect(ForecastProviderMock, :fetch_daily_max, 3, fn city ->
         case city.name do
-          "Curitiba" -> Process.sleep(500)
+          "Curitiba" -> Process.sleep(:infinity)
           _other -> :ok
         end
 
