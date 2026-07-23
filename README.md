@@ -60,7 +60,6 @@ mix weather
 - No custom supervision tree: this is a run-once CLI and the `:req`
   application supervises its own connection pool (`Task.Supervisor` was
   considered and rejected as ceremony for this shape).
-- Full rationale: [`docs/specs/weather-forecast-design.md`](docs/specs/weather-forecast-design.md).
 
 ## Tests
 
@@ -75,3 +74,17 @@ adapter is tested against the API shape with
 network. Quality gates, also enforced on CI: `mix format --check-formatted`,
 `mix credo --strict`, `mix compile --warnings-as-errors`,
 `mix test --warnings-as-errors` (against locked dependencies).
+
+## How this was built
+
+This project was co-authored with
+[Claude Code](https://claude.com/claude-code), Anthropic's agentic CLI. It was
+built spec-first: a design document and per-phase implementation plans were
+written and reviewed before any code, and the work landed through reviewed
+pull requests with the design docs guiding each step.
+
+Those planning artifacts were removed from the tree once the code stood on its
+own (so the repo ships only code, tests, and this README). If you want to see
+what drove the build, they live in the diff of
+[PR #3](https://github.com/johny-carebe/weather_forecast/pull/3) — the change
+that removed them.
