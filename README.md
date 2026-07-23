@@ -52,7 +52,9 @@ mix weather
   `OPEN_METEO_TIMEZONE`) are declared in the committed `.env`/`.env.test`
   files (they are not secrets), loaded at boot by `config/runtime.exs` via
   [dotenvy](https://hexdocs.pm/dotenvy), and read only through
-  `WeatherForecast.Config`.
+  `WeatherForecast.Config`. A gitignored `.env.local` can override them
+  locally; in the test env the committed files always win, keeping the suite
+  hermetic.
 - [Req](https://hexdocs.pm/req) is the HTTP client; its built-in transient
   retries stay enabled for real runs and are disabled in tests.
 - No custom supervision tree: this is a run-once CLI and the `:req`
@@ -71,4 +73,5 @@ the `ForecastProvider` port with [Mox](https://hexdocs.pm/mox); the HTTP
 adapter is tested against the API shape with
 [`Req.Test`](https://hexdocs.pm/req/Req.Test.html) — so no test touches the
 network. Quality gates, also enforced on CI: `mix format --check-formatted`,
-`mix credo --strict`, `mix compile --warnings-as-errors`, `mix test`.
+`mix credo --strict`, `mix compile --warnings-as-errors`,
+`mix test --warnings-as-errors` (against locked dependencies).

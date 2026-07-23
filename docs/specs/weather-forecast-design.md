@@ -37,9 +37,10 @@ query parameter (the `OPEN_METEO_TIMEZONE` env constant).
 ## Architecture
 
 Hexagonal-lite (ports & adapters) with DDD-style layering. The dependency rule:
-**presentation → application → domain**; infrastructure plugs into the
-application's port from the side and depends only on the domain. The domain
-depends on nothing — not even configuration.
+**presentation → application → domain**; infrastructure implements the
+application's port from the side, depending only on the domain, the port
+contract, and `Config`. The domain depends on nothing — not even
+configuration.
 
 ```
 mix weather
@@ -67,11 +68,15 @@ The app defines no supervision tree of its own: it is a run-once CLI, and the
 Environment constants are declared in committed `.env` / `.env.test` files
 (`FORECAST_DAYS`, `OPEN_METEO_BASE_URL`, `OPEN_METEO_TIMEZONE` — they are not
 secrets) and loaded into the app env at boot by `config/runtime.exs` using
-[dotenvy](https://hexdocs.pm/dotenvy) (`.env`, then `.env.<env>`, then system
-env — later sources win). Compile-time wiring stays in `config/*.exs`: the
-active `ForecastProvider` adapter, and the test-only Req options.
-`WeatherForecast.Config` is the single read point — no other module touches
-the app env.
+[dotenvy](https://hexdocs.pm/dotenvy). Source precedence is right-most-wins
+and env-dependent: in `:test` the committed files outrank the shell so the
+suite stays hermetic; elsewhere a gitignored `.env.local` and real environment
+variables override the committed files. Conversions are strict (`:integer!`,
+`:string!`), so a set-but-empty or partially-parsable value fails at boot
+naming the variable instead of corrupting a run. Compile-time wiring stays in
+`config/*.exs`: the active `ForecastProvider` adapter, and the test-only Req
+options. `WeatherForecast.Config` is the single read point — no other module
+touches the app env.
 
 ### Module contracts
 
@@ -89,22 +94,27 @@ All modules live under the `WeatherForecast` namespace.
   Use cases depend on this contract, never on a concrete client.
 - **`Application.Factories.Cities`** — builds the three covered `City`
   entities (`defaults/0`), in presentation order.
-- **`Application.Factories.CityResult`** — `build(city, provider_result)`
-  turns `{:ok, temps}` into `{city, {:ok, average}}` (delegating the math to
-  `Domain.Forecast` with `Config.forecast_days()`) and passes
-  `{:error, reason}` through as `{city, {:error, reason}}`. Use cases reach
-  the domain only through factories.
+- **`Application.Factories.CityResult`** —
+  `build(city, provider_result, forecast_days)` turns `{:ok, temps}` into
+  `{city, {:ok, average}}` (delegating the math to `Domain.Forecast`) and
+  passes `{:error, reason}` through as `{city, {:error, reason}}`. The window
+  arrives as an argument — the factory reads no config. Use cases never call
+  domain functions directly; construction and assembly go through factories.
 - **`Application.UseCases.CalculateAverageMaxTemperatures`** —
   `call(cities \\ Factories.Cities.defaults(), timeout \\ 30_000)` fans out
-  one task per city through the provider from `Config.forecast_provider()`
-  and returns `[CityResult.t()]` in input order.
+  one task per city through the provider from `Config.forecast_provider()`,
+  fetches the forecast window once from `Config` and threads it into the
+  `CityResult` factory, returning `[CityResult.t()]` in input order.
 - **`Infrastructure.OpenMeteoClient`** — the adapter
   (`@behaviour ForecastProvider`) and the only module that knows the API
   shape: builds the GET from `Config` constants (base URL, timezone, forecast
   days), validates the body, and returns `{:ok, temps}` or a normalized
-  `{:error, reason}` (taxonomy below). `Config.open_meteo_req_options()` lets
-  the test env inject `plug: {Req.Test, Infrastructure.OpenMeteoClient}` and
-  `retry: false`.
+  `{:error, reason}` (taxonomy below). An error body (`"error": true`) takes
+  precedence over the HTTP status, whatever the status. Transport policy keeps
+  the retry schedule inside the use case deadline: `max_retries: 1` with 5s
+  connect/receive timeouts (worst case ≈21s < 30s).
+  `Config.open_meteo_req_options()` lets the test env inject
+  `plug: {Req.Test, Infrastructure.OpenMeteoClient}` and `retry: false`.
 - **`WeatherForecast.Config`** — wraps every app-env read behind named,
   `@spec`'d functions (`forecast_provider/0`, `forecast_days/0`,
   `open_meteo_base_url/0`, `open_meteo_timezone/0`, `open_meteo_req_options/0`).
@@ -157,7 +167,8 @@ on the same output stream, using a human-readable rendering of the reason
 task completes normally either way — partial results are still useful results.
 
 Req's built-in transient retries (safe idempotent retry on 5xx/transport
-errors) stay enabled for real runs and are disabled in tests.
+errors) stay enabled for real runs — with the schedule sized to fit the
+per-city deadline (see the client contract) — and are disabled in tests.
 
 ## Open-Meteo API contract
 
@@ -207,10 +218,10 @@ All tests are `async: true`, and each layer is tested at its own boundary:
 | -------------------------------------- | --------------------------------------------------------------- |
 | `test/weather_forecast/domain/forecast_test.exs` | doctests + averaging edges (window, fewer values, empty list) |
 | `test/weather_forecast/application/factories/cities_test.exs` | the three fixed cities, order, coordinates |
-| `test/weather_forecast/application/factories/city_result_test.exs` | success averaging via the configured window; error passthrough |
+| `test/weather_forecast/application/factories/city_result_test.exs` | success averaging with explicit windows; error passthrough |
 | `test/weather_forecast/infrastructure/open_meteo_client_test.exs` | happy path; API-error body; plain 500; malformed 200; transport error (Req.Test) |
-| `test/weather_forecast/application/use_cases/calculate_average_max_temperatures_test.exs` | concurrent fan-out through the mocked port: per-city values, input-order results, failure isolation, timeout normalization, empty list |
-| `test/weather_forecast/presentation/cli_test.exs` | `capture_io` asserting the exact output lines, incl. the unavailable rendering |
+| `test/weather_forecast/application/use_cases/calculate_average_max_temperatures_test.exs` | fan-out through the mocked port: a rendezvous test proving genuine concurrency, an inverted-completion test pinning result order, per-city values, failure isolation, timeout normalization, empty list |
+| `test/weather_forecast/presentation/cli_test.exs` | `capture_io` asserting the exact output lines, incl. the unavailable, negative-zero, and fallback-reason renderings |
 | `test/weather_forecast_test.exs`       | the facade delegates to the use case |
 
 ## Toolchain, layout & CI
@@ -284,5 +295,11 @@ weather_forecast/
   it actually owns — use case and CLI tests assert application behavior
   against the behaviour contract; adapter tests assert the HTTP/JSON shape.
 - **Rounding at the edge:** the core returns full-precision floats; only the
-  CLI formats to one decimal. Keeps the math testable independently of
-  presentation.
+  CLI formats to one decimal (normalizing `-0.0`). Keeps the math testable
+  independently of presentation.
+- **The `Application` namespace:** the DDD layer name shadows the conventional
+  OTP callback-module name. This app deliberately defines no
+  `WeatherForecast.Application` module and no `mod:` entry in `mix.exs`; if a
+  supervision tree is ever added, the callback module must take another name
+  (or the layer be renamed) — bare `Application` in code always resolves to
+  Elixir's.

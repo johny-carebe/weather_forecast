@@ -12,7 +12,7 @@ Authoritative design: `docs/specs/weather-forecast-design.md` (already updated).
 
 ## Global Constraints
 
-- All commands run from the repo root: `~/workspace/weather_forecast`.
+- All commands run from the repo root.
 - The suite is green at the end of every task; every test module stays `async: true`.
 - Use `git mv` for moves so history follows the files.
 - Every public function has `@spec`; every module has `@moduledoc`.

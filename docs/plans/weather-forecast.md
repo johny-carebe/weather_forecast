@@ -12,7 +12,7 @@ Authoritative design: `docs/specs/weather-forecast-design.md`.
 
 ## Global Constraints
 
-- All commands run from the repo root: `~/workspace/weather_forecast`.
+- All commands run from the repo root.
 - Tests never touch the network: `config/test.exs` injects `plug: {Req.Test, WeatherForecast.OpenMeteo}` and `retry: false` into the client's Req options.
 - Every test module is `async: true`.
 - Every public function has `@spec`; every module has `@moduledoc`.
