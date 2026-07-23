@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/weather-report.png" alt="Weather Report" width="600">
+</p>
+
 # weather_forecast
 
 Fetches the [Open-Meteo](https://open-meteo.com/) weather forecast for three
