@@ -48,13 +48,12 @@ mix weather
   behaviour (port), never on HTTP details; the Open-Meteo adapter implements
   it and is swapped via config. Application factories (`Cities`, `CityResult`)
   mediate all domain access, keeping the use case thin.
-- Environment constants (`FORECAST_DAYS`, `OPEN_METEO_BASE_URL`,
-  `OPEN_METEO_TIMEZONE`) are declared in the committed `.env`/`.env.test`
-  files (they are not secrets), loaded at boot by `config/runtime.exs` via
-  [dotenvy](https://hexdocs.pm/dotenvy), and read only through
-  `WeatherForecast.Config`. A gitignored `.env.local` can override them
-  locally; in the test env the committed files always win, keeping the suite
-  hermetic.
+- Configuration is plain Elixir config: the non-secret defaults
+  (`forecast_days`, `open_meteo_base_url`, `open_meteo_timezone`) live in
+  `config/config.exs` and are read only through `WeatherForecast.Config`.
+  `config/runtime.exs` lets `OPEN_METEO_BASE_URL` be overridden by an
+  environment variable at boot (e.g. to point at a mock); tests read the
+  compiled defaults, so the suite stays hermetic.
 - [Req](https://hexdocs.pm/req) is the HTTP client; its built-in transient
   retries stay enabled for real runs and are disabled in tests.
 - No custom supervision tree: this is a run-once CLI and the `:req`
