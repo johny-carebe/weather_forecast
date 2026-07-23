@@ -20,7 +20,6 @@ defmodule WeatherForecast.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
-      {:dotenvy, "~> 1.1"},
       {:plug, "~> 1.0", only: :test},
       {:mox, "~> 1.2", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}

@@ -22,6 +22,8 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 weather_forecast-*.tar
 
-# Local environment overrides — never commit env files holding secrets.
-.env.local
+# Environment files are never committed — real config lives in
+# config/*.exs and runtime environment variables.
+.env
+.env.*
 
