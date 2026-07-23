@@ -60,7 +60,6 @@ mix weather
 - No custom supervision tree: this is a run-once CLI and the `:req`
   application supervises its own connection pool (`Task.Supervisor` was
   considered and rejected as ceremony for this shape).
-- Full rationale: [`docs/specs/weather-forecast-design.md`](docs/specs/weather-forecast-design.md).
 
 ## Tests
 
